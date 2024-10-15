@@ -17,7 +17,17 @@ rbtree *new_rbtree(void) {
 
 void delete_rbtree(rbtree *t) {
   // TODO: reclaim the tree nodes's memory
+  delete_rbtree_whole(t, t -> root);
   free(t);
+}
+
+void delete_rbtree_whole(rbtree *t, node_t * cur)
+{
+    if (cur == t -> nil)
+      return;
+    delete_rbtree_whole(t, cur -> left);
+    delete_rbtree_whole(t, cur -> right);
+    free(cur);
 }
 
 node_t *rbtree_insert(rbtree *t, const key_t key) {
@@ -107,12 +117,24 @@ node_t *rbtree_find(const rbtree *t, const key_t key) {
 
 node_t *rbtree_min(const rbtree *t) {
   // TODO: implement find
-  return t->root;
+  node_t * temp = t -> root;
+  while (temp -> left != t -> nil)
+  {
+      temp = temp -> left;
+  }
+
+  return temp;
 }
 
 node_t *rbtree_max(const rbtree *t) {
   // TODO: implement find
-  return t->root;
+  node_t * temp = t -> root;
+  while (temp -> right != t -> nil)
+  {
+      temp = temp -> right;
+  }
+
+  return temp;
 }
 
 int rbtree_erase(rbtree *t, node_t *p) {
@@ -122,7 +144,31 @@ int rbtree_erase(rbtree *t, node_t *p) {
 
 int rbtree_to_array(const rbtree *t, key_t *arr, const size_t n) {
   // TODO: implement to_array
+  if (t -> root == t -> nil)
+    return 0;
+  
+  int count = 0;
+
+  tree_to_array(t, arr, n, t -> root, &count);
+
   return 0;
+}
+
+int tree_to_array(const rbtree *t, key_t *arr, const size_t n, node_t * cur, int * count)
+{
+    //현재 도달한 노드가 nil 노드라면
+    if (cur == t -> nil)
+      //함수 종료
+      return 0;
+        
+    //배열에 현재 노드의 key값 삽입
+    arr[(*count)] = cur -> key;
+    //count값 추가
+    *count += 1;
+    tree_to_array(t, arr, n, cur -> left, &count);
+    tree_to_array(t, arr, n, cur -> right, &count);
+    return 0;
+
 }
 
 void rbtree_check(rbtree *t, node_t *n)
@@ -201,19 +247,6 @@ void rbtree_check(rbtree *t, node_t *n)
   //2번 룰을 위반하지 않게끔 루트 노드 색깔을 검정색으로 처리
   t -> root -> color = RBTREE_BLACK;
 
-}
-
-node_t * rbtree_travel(rbtree *t, node_t *n) //문제가 발생한 노드의 포인터를 반환
-{
-  if (n == t -> nil) //닐 노드까지 도달했다면
-  {
-    return n; //반복 종료. 닐 노드 포인터 반환
-  }
-  //만약 탐색 중인 노드의 색깔이 빨강인데 부모 색깔도 빨강이면
-  if (n -> color == RBTREE_RED && n -> parent -> color == RBTREE_RED)
-  {
-    return n; //해당 노드 포인터 반환
-  }
 }
 
 //왼쪽 회전 구현 : 색깔 변경은 나중에 하기
