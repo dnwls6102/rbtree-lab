@@ -174,7 +174,7 @@ void rotate_left(rbtree *t, node_t *n)
     child -> parent = n -> parent;
 
     //조부모가 루트였던 경우
-    if (n -> parent == NULL)
+    if (n -> parent == t->nil)
     {
         //부모를 루트로 설정한다
         t -> root = child;
@@ -223,7 +223,7 @@ void rotate_right(rbtree *t, node_t *n)
     child -> parent = n -> parent;
 
     //조부모가 루트였던 경우
-    if (n -> parent == NULL)
+    if (n -> parent == t -> nil)
     {
         //부모를 루트로 설정한다
         t -> root = child;
@@ -463,11 +463,11 @@ int tree_to_array(const rbtree *t, key_t *arr, const size_t n, node_t * cur, int
       //함수 종료
       return 0;
         
+    tree_to_array(t, arr, n, cur -> left, count);
     //배열에 현재 노드의 key값 삽입
     arr[(*count)] = cur -> key;
     //count값 추가
     *count += 1;
-    tree_to_array(t, arr, n, cur -> left, count);
     tree_to_array(t, arr, n, cur -> right, count);
     return 0;
 
@@ -521,11 +521,11 @@ void rbtree_check(rbtree *t, node_t *n)
               //조부모의 색깔은 빨강으로 바꾼다
               n -> parent -> parent -> color = RBTREE_RED;
               //우측 회전 실시
-              rotate_right(t, n);
+              rotate_right(t, n -> parent -> parent);
           }
       }
       //삽입한 노드의 부모가 오른쪽 자식이라면
-      if (n -> parent == n -> parent -> parent -> right)
+      else
       {
           //삼촌 노드 포인터 할당
           node_t * uncle = n -> parent -> parent -> left;
@@ -554,7 +554,7 @@ void rbtree_check(rbtree *t, node_t *n)
               //조부모의 색깔은 빨강으로 바꾼다
               n -> parent -> parent -> color = RBTREE_RED;
               //좌측 회전 실시
-              rotate_left(t, n);
+              rotate_left(t, n -> parent -> parent);
           }
       }
   }
