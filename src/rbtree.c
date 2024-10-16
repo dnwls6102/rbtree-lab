@@ -15,12 +15,6 @@ rbtree *new_rbtree(void) {
   return p;
 }
 
-void delete_rbtree(rbtree *t) {
-  // TODO: reclaim the tree nodes's memory
-  delete_rbtree_whole(t, t -> root);
-  free(t);
-}
-
 void delete_rbtree_whole(rbtree *t, node_t * cur)
 {
     if (cur == t -> nil)
@@ -28,6 +22,12 @@ void delete_rbtree_whole(rbtree *t, node_t * cur)
     delete_rbtree_whole(t, cur -> left);
     delete_rbtree_whole(t, cur -> right);
     free(cur);
+}
+
+void delete_rbtree(rbtree *t) {
+  // TODO: reclaim the tree nodes's memory
+  delete_rbtree_whole(t, t -> root);
+  free(t);
 }
 
 node_t *rbtree_insert(rbtree *t, const key_t key) {
@@ -137,19 +137,321 @@ node_t *rbtree_max(const rbtree *t) {
   return temp;
 }
 
-int rbtree_erase(rbtree *t, node_t *p) {
-  // TODO: implement erase
-  return 0;
+//서브트리의 min 값을 찾아주는 함수
+node_t *subtree_min(rbtree *t, node_t *n) {
+  // TODO: implement find
+  node_t * temp = n;
+  while (temp -> left != t -> nil)
+  {
+      temp = temp -> left;
+  }
+
+  return temp;
 }
 
-int rbtree_to_array(const rbtree *t, key_t *arr, const size_t n) {
-  // TODO: implement to_array
-  if (t -> root == t -> nil)
-    return 0;
-  
-  int count = 0;
+//왼쪽 회전 구현 : 색깔 변경은 나중에 하기
+//회전하는 주체 : 조부모 노드
+void rotate_left(rbtree *t, node_t *n)
+{
+    //조부모의 오른쪽 자식
+    node_t * child = n -> right;
 
-  tree_to_array(t, arr, n, t -> root, &count);
+    //손자 기준 조부모가 부모의 왼쪽 자식이 되고
+    //기존 부모의 왼쪽 자식은 조부모의 오른쪽 자식이 된다
+
+    //조부모의 오른쪽 자식을 부모의 왼쪽 자식으로 바꾼다
+    n -> right = child -> left;
+
+    if (child -> left != t -> nil) //부모의 왼쪽 자식이 nil이 아니라면
+    {
+        child -> left -> parent = n; // 부모의 왼쪽 서브트리의 부모를 조부모 노드(현재 노드)로 한다
+    }
+
+    //RB Tree의 노드에는 부모에 대한 정보도 있기 때문에
+    //부모에 대한 정보도 모두 조정을 해줘야 한다
+
+    //부모의 부모를 조부모의 부모로 설정한다
+    child -> parent = n -> parent;
+
+    //조부모가 루트였던 경우
+    if (n -> parent == NULL)
+    {
+        //부모를 루트로 설정한다
+        t -> root = child;
+    }
+    //조부모가 왼쪽 자식이었던 경우
+    else if (n -> parent -> left == n)
+    {
+        //이제 child가 왼쪽 자식이 된다
+        n -> parent -> left = child;
+    }
+    //조부모가 오른쪽 자식이었던 경우
+    else
+    {
+        //이제 child가 오른쪽 자식이 된다
+        n -> parent -> right = child;
+    }
+
+    //조부모가 이제 부모의 왼쪽 자식이 된다
+    child -> left = n;
+    //조부모의 부모 설정도 해준다
+    n -> parent = child;
+}
+
+//오른쪽 회전 구현 : 색깔 변경은 나중에 하기
+//회전하는 주체 : 조부모 노드
+void rotate_right(rbtree *t, node_t *n)
+{
+    //조부모의 왼쪽 자식
+    node_t * child = n -> left;
+
+    //손자 기준 조부모가 부모의 오른쪽 자식이 되고
+    //기존 부모의 오른쪽 자식은 조부모의 왼쪽 자식이 된다
+
+    //조부모의 왼쪽 자식을 부모의 오른쪽 자식으로 바꾼다
+    n -> left = child -> right;
+
+    if (child -> right != t -> nil) //부모의 오른쪽 자식이 nil이 아니라면
+    {
+        child -> right -> parent = n; // 부모의 오른쪽 서브트리의 부모를 조부모 노드(현재 노드)로 한다
+    }
+
+    //RB Tree의 노드에는 부모에 대한 정보도 있기 때문에
+    //부모에 대한 정보도 모두 조정을 해줘야 한다
+
+    //부모의 부모를 조부모의 부모로 설정한다
+    child -> parent = n -> parent;
+
+    //조부모가 루트였던 경우
+    if (n -> parent == NULL)
+    {
+        //부모를 루트로 설정한다
+        t -> root = child;
+    }
+    //조부모가 왼쪽 자식이었던 경우
+    else if (n -> parent -> left == n)
+    {
+        //이제 child가 왼쪽 자식이 된다
+        n -> parent -> left = child;
+    }
+    //조부모가 오른쪽 자식이었던 경우
+    else
+    {
+        //이제 child가 오른쪽 자식이 된다
+        n -> parent -> right = child;
+    }
+
+    //조부모가 이제 부모의 오른쪽 자식이 된다
+    child -> right = n;
+    //조부모의 부모 설정도 해준다
+    n -> parent = child;
+}
+
+//삭제 후 해당 트리가 RB Tree의 규칙을 지키고 있는지를 체크하는 함수
+void rbtree_erase_check (rbtree *t, node_t *x)
+{
+    
+    node_t * w;
+    //체크하는 노드가 루트가 아니고, 색깔이 검정일 때까지
+    //체크하는 노드가 루트에 다다르거나, 색깔이 빨강이 되는 순간 break
+    //x는 무조건 색깔이 검정인 상태로 들어옴. 이유: 이 함수 호출 전 조건이 그렇기 때문
+    while (x != t -> root && x -> color == RBTREE_BLACK)
+    {
+        //현재 체크하는 노드가 왼쪽 자식이면
+        if (x == x -> parent -> left)
+        {
+            //오른쪽 자식(형제)를 가져오기
+            w = x -> parent -> right;
+            //만약 형제가 빨강이라면 : 검정 높이가 달라질 우려가 있음
+            if (w -> color == RBTREE_RED)
+            {
+                w -> color = RBTREE_BLACK; //형제 색깔도 검사 노드와 같게 검정으로 바꾸기
+                x -> parent -> color = RBTREE_RED; //부모 색깔은 빨강으로 바꾸기
+                rotate_left(t, x -> parent); //부모를 축으로 좌회전 => 결과 : 기존 w가 조부모(서브 트리의 루트)가 됨
+                w = x -> parent -> right; //w가 추적하는 대상을 부모의 오른쪽 자식으로 변경 -> 여전히 x의 형제를 추적중
+            }
+        
+            //x의 형제의 왼쪽 자식 이 검정이고 오른쪽 자식도 검정이면
+            //5번 룰 위반. 형제 쪽으로 타고 갈 경우가 검정 높이가 1만큼 더 높다
+            if (w -> left -> color == RBTREE_BLACK && w -> right -> color == RBTREE_BLACK)
+            { 
+                //형제의 색깔을 빨강으로 변경
+                w -> color = RBTREE_RED;
+                //추적 대상을 부모로 변경
+                x = x -> parent;
+            }
+            //x의 형제의 자식들 중 하나가 빨강이면
+            else
+            {   
+                //형제의 오른쪽 자식이 검정이면 (=왼쪽 자식이 빨강이면)
+                if (w -> right -> color == RBTREE_BLACK)
+                {   
+                    //형제 왼쪽 자식도 검정으로 바꾸기
+                    w -> left -> color = RBTREE_BLACK;
+                    //형제의 색깔은 빨강으로 변경
+                    w -> color = RBTREE_RED;
+                    //형제를 축으로 오른쪽 회전
+                    rotate_right(t, w);
+                    //w 포인터의 추적 대상을 현재 x의 형제(=원래 w의 왼쪽 자식)로 변경
+                    w = x -> parent -> right;
+                }
+                //형제의 색깔을 부모의 색깔로 변경
+                w -> color = x -> parent -> color;
+                //부모의 색깔은 겸정으로 변경
+                x -> parent -> color = RBTREE_BLACK;
+                w -> right -> color = RBTREE_BLACK;
+                rotate_left(t, x -> parent);
+                x = t -> root;
+            }
+        }
+        //현재 체크하는 노드가 오른쪽 자식이면
+        else
+        {
+            //왼쪽 자식(형제)를 가져오기
+            w = x -> parent -> left;
+            //만약 형제가 빨강이라면 : 검정 높이가 달라질 우려가 있음
+            if (w -> color == RBTREE_RED)
+            {
+                w -> color = RBTREE_BLACK; //형제 색깔도 검사 노드와 같게 검정으로 바꾸기
+                x -> parent -> color = RBTREE_RED; //부모 색깔은 빨강으로 바꾸기
+                rotate_right(t, x -> parent); //부모를 축으로 우회전 => 결과 : 기존 w가 조부모(서브 트리의 루트)가 됨
+                w = x -> parent -> left; //w가 추적하는 대상을 부모의 왼쪽 자식으로 변경 -> 여전히 x의 형제를 추적중
+            }
+        
+            //x의 형제의 오른쪽 자식 이 검정이고 왼쪽 자식도 검정이면
+            //5번 룰 위반. 형제 쪽으로 타고 갈 경우가 검정 높이가 1만큼 더 높다
+            if (w -> left -> color == RBTREE_BLACK && w -> right -> color == RBTREE_BLACK)
+            { 
+                //형제의 색깔을 빨강으로 변경
+                w -> color = RBTREE_RED;
+                //추적 대상을 부모로 변경
+                x = x -> parent;
+            }
+            //x의 형제의 자식들 중 하나가 빨강이면
+            else
+            {   
+                //형제의 왼쪽 자식이 검정이면 (=오른쪽 자식이 빨강이면)
+                if (w -> left -> color == RBTREE_BLACK)
+                {   
+                    //형제 오른쪽 자식도 검정으로 바꾸기
+                    w -> right -> color = RBTREE_BLACK;
+                    //형제의 색깔은 빨강으로 변경
+                    w -> color = RBTREE_RED;
+                    //형제를 축으로 오른쪽 회전
+                    rotate_left(t, w);
+                    //w 포인터의 추적 대상을 현재 x의 형제(=원래 w의 왼쪽 자식)로 변경
+                    w = x -> parent -> left;
+                }
+                //형제의 색깔을 부모의 색깔로 변경
+                w -> color = x -> parent -> color;
+                //부모의 색깔은 겸정으로 변경
+                x -> parent -> color = RBTREE_BLACK;
+                w -> left -> color = RBTREE_BLACK;
+                rotate_right(t, x -> parent);
+                x = t -> root;
+            }
+        }
+    }
+    //루트 노드를 검정으로 설정
+    x -> color = RBTREE_BLACK;
+}
+
+
+//삭제한 노드 자리에 삭제한 노드의 자식을 넣는 작업
+//매개변수 순서 : 트리, 삭제할 노드, 이제 서브 트리의 루트가 될 노드(삭제할 노드의 자식 노드)
+void rbtree_transplant(rbtree *t, node_t *delete_node, node_t * will_be_root)
+{
+    //삭제한 노드가 루트 노드였다면
+    if(delete_node -> parent == t -> nil)
+    {
+        //트리의 루트를 삭제할 노드의 자식 노드로 설정
+        t -> root = will_be_root;
+    }
+    //삭제할 노드가 왼쪽 자식이라면
+    else if (delete_node == delete_node -> parent -> left)
+    {   
+        //삭제할 노드의 자식 노드를 왼쪽 자식으로 설정
+        delete_node -> parent -> left = will_be_root;
+    }
+    //오른쪽 자식이라면
+    else
+    {   
+        //삭제할 노드의 자식 노드를 오른쪽 자식으로 설정
+        delete_node -> parent -> right = will_be_root;
+    }
+    //삭제할 노드의 부모 노드를 삭제할 노드의 부모로 설정
+    will_be_root -> parent = delete_node -> parent;
+}
+
+
+//rbtree의 노드를 삭제하는 작업
+int rbtree_erase(rbtree *t, node_t *p) {
+  // TODO: implement erase
+  node_t * temp = p;
+  node_t * child;
+  //삭제하는 노드의 색깔을 저장하는 변수 선언
+  color_t original_color = temp -> color;
+
+  //삭제하는 노드의 좌측 자식이 nil 노드라면
+  if (p -> left == t -> nil)
+  {
+      //삭제하는 노드의 우측 자식을 받아오기 (미리 받아오는 이유 : 삭제한 이후 rbtree 규칙을 체크할 때 필요함)
+      child = p -> right;
+      rbtree_transplant(t, p, p -> right);
+  }
+  //삭제하는 노드의 우측 자식이 nil 노드라면
+  else if (p -> right == t -> nil)
+  {
+      //삭제하는 노드의 좌측 자식을 받아오기 (미리 받아오는 이유 : 삭제한 이후 rbtree 규칙을 체크할 때 필요함)
+      child = p -> left;
+      rbtree_transplant(t, p, p -> left);
+  }
+  //삭제하려는 노드의 양 쪽에 모두 자식이 있다면
+  else
+  {
+      //삭제하려는 노드의 오른쪽 자식이 루트인 서브트리에서, 삭제하려는 노드보다 값이 큰 노드들 중 가장 작은 노드를 저장
+      node_t * next_minimal = subtree_min(t, p -> right);
+      //original color는 실제로 이동하는 노드의 색깔을 저장
+      //삭제된 노드의 자리로 이동한 후 자리를 채우는 노드는 색깔을 계승받지 않기 때문에
+      //기존 노드 색깔을 토대로 판단해야 함
+      original_color = next_minimal -> color;
+      child = next_minimal -> right;
+      //next_minimal이 삭제하려는 노드의 오른쪽 (직계)자식이 아니라면
+      if (next_minimal != p -> right)
+      {   
+          //next_minimal을 삭제하고 그 자리에 next_minimal의 오른쪽 자식(=next_minimal 다음으로 가장 작은 노드) 삽입
+          rbtree_transplant(t, next_minimal, next_minimal -> right);
+          //next_minimal의 오른쪽 자식을 삭제하려는 노드의 오른쪽 자식으로 교체
+          next_minimal -> right = p -> right;
+          //삭제하려는 노드의 오른쪽 자식의 부모를 next_minimal로 교체
+          next_minimal -> right -> parent = next_minimal;
+      }
+      //next_minimal이 삭제하려는 노드의 오른쪽 직계 자식이라면
+      else
+      {
+          //next_minimal의 successor의 부모를 next_minimal로 설정
+          child -> parent = next_minimal;
+      }
+      //next_minimal을 삭제할 노드 자리에 이식
+      rbtree_transplant(t, p, next_minimal);
+      //next_minimal이 삭제한 노드의 왼쪽 자식들을 입양받음
+      next_minimal -> left = p -> left;
+      //삭제한 노드의 왼쪽 자식들의 부모를 next_minimal로 설정
+      next_minimal -> left -> parent = next_minimal;
+      //색깔 계승받기
+      next_minimal -> color = p -> color;
+  }
+
+  //삭제한 노드 메모리 동적 해제
+  free(p);
+
+  //origin color가 black이었을 경우를 조사하는 이유
+  //원래 빨강이라면 RB Tree의 특성이 유지될 수밖에 없음
+  //검정 높이는 모두 그대로 유지되고(높이를 셀 때 빨강이 사라졌다고 해서 높이가 달라지진 않으니)
+  //빨강과 빨강이 연속될 일도 없음 (애초에 정상적인 RB Tree였다면 빨강의 자식 노드가 빨강일 리가 없음)
+  //삭제 이전 RB Tree가 규칙을 모두 유지했다 했을 때, 루트가 빨강이 아니었을 것임
+  if (original_color == RBTREE_BLACK)
+      rbtree_erase_check(t, child);
 
   return 0;
 }
@@ -165,10 +467,22 @@ int tree_to_array(const rbtree *t, key_t *arr, const size_t n, node_t * cur, int
     arr[(*count)] = cur -> key;
     //count값 추가
     *count += 1;
-    tree_to_array(t, arr, n, cur -> left, &count);
-    tree_to_array(t, arr, n, cur -> right, &count);
+    tree_to_array(t, arr, n, cur -> left, count);
+    tree_to_array(t, arr, n, cur -> right, count);
     return 0;
 
+}
+
+int rbtree_to_array(const rbtree *t, key_t *arr, const size_t n) {
+  // TODO: implement to_array
+  if (t -> root == t -> nil)
+    return 0;
+  
+  int count = 0;
+
+  tree_to_array(t, arr, n, t -> root, &count);
+
+  return 0;
 }
 
 void rbtree_check(rbtree *t, node_t *n)
@@ -247,106 +561,4 @@ void rbtree_check(rbtree *t, node_t *n)
   //2번 룰을 위반하지 않게끔 루트 노드 색깔을 검정색으로 처리
   t -> root -> color = RBTREE_BLACK;
 
-}
-
-//왼쪽 회전 구현 : 색깔 변경은 나중에 하기
-//회전하는 주체 : 조부모 노드
-void rotate_left(rbtree *t, node_t *n)
-{
-    //조부모의 오른쪽 자식
-    node_t * child = n -> right;
-    //오른쪽 자식의 왼쪽 자식 == 손자
-    node_t * grandchild = child -> left;
-
-    //손자 기준 조부모가 부모의 왼쪽 자식이 되고
-    //기존 부모의 왼쪽 자식은 조부모의 오른쪽 자식이 된다
-
-    //조부모의 오른쪽 자식을 부모의 왼쪽 자식으로 바꾼다
-    n -> right = child -> left;
-
-    if (child -> left != t -> nil) //부모의 왼쪽 자식이 nil이 아니라면
-    {
-        child -> left -> parent = n; // 부모의 왼쪽 서브트리의 부모를 조부모 노드(현재 노드)로 한다
-    }
-
-    //RB Tree의 노드에는 부모에 대한 정보도 있기 때문에
-    //부모에 대한 정보도 모두 조정을 해줘야 한다
-
-    //부모의 부모를 조부모의 부모로 설정한다
-    child -> parent = n -> parent;
-
-    //조부모가 루트였던 경우
-    if (n -> parent == NULL)
-    {
-        //부모를 루트로 설정한다
-        t -> root = child;
-    }
-    //조부모가 왼쪽 자식이었던 경우
-    else if (n -> parent -> left == n)
-    {
-        //이제 child가 왼쪽 자식이 된다
-        n -> parent -> left = child;
-    }
-    //조부모가 오른쪽 자식이었던 경우
-    else
-    {
-        //이제 child가 오른쪽 자식이 된다
-        n -> parent -> right = child;
-    }
-
-    //조부모가 이제 부모의 왼쪽 자식이 된다
-    child -> left = n;
-    //조부모의 부모 설정도 해준다
-    n -> parent = child;
-}
-
-//오른쪽 회전 구현 : 색깔 변경은 나중에 하기
-//회전하는 주체 : 조부모 노드
-void rotate_right(rbtree *t, node_t *n)
-{
-    //조부모의 왼쪽 자식
-    node_t * child = n -> left;
-    //왼쪽 자식의 오른쪽 자식 == 손자
-    node_t * grandchild = child -> right;
-
-    //손자 기준 조부모가 부모의 오른쪽 자식이 되고
-    //기존 부모의 오른쪽 자식은 조부모의 왼쪽 자식이 된다
-
-    //조부모의 왼쪽 자식을 부모의 오른쪽 자식으로 바꾼다
-    n -> left = child -> right;
-
-    if (child -> right != t -> nil) //부모의 오른쪽 자식이 nil이 아니라면
-    {
-        child -> right -> parent = n; // 부모의 오른쪽 서브트리의 부모를 조부모 노드(현재 노드)로 한다
-    }
-
-    //RB Tree의 노드에는 부모에 대한 정보도 있기 때문에
-    //부모에 대한 정보도 모두 조정을 해줘야 한다
-
-    //부모의 부모를 조부모의 부모로 설정한다
-    child -> parent = n -> parent;
-
-    //조부모가 루트였던 경우
-    if (n -> parent == NULL)
-    {
-        //부모를 루트로 설정한다
-        t -> root = child;
-    }
-    //조부모가 왼쪽 자식이었던 경우
-    else if (n -> parent -> left == n)
-    {
-        //이제 child가 왼쪽 자식이 된다
-        n -> parent -> left = child;
-    }
-    //조부모가 오른쪽 자식이었던 경우
-    else
-    {
-        //이제 child가 오른쪽 자식이 된다
-        n -> parent -> right = child;
-    }
-
-    //조부모가 이제 부모의 오른쪽 자식이 된다
-    child -> right = n;
-    //조부모의 부모 설정도 해준다
-    n -> parent = child;
 }
